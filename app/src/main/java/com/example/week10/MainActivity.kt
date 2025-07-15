@@ -9,11 +9,17 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.week10.databinding.ActivityMainBinding
+import com.facebook.AccessToken
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginResult
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.firebase.Firebase
+import com.google.firebase.auth.FacebookAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 
@@ -26,6 +32,13 @@ class MainActivity : AppCompatActivity() {
 
     private val tracking_nb_google_sing_up = 9876
 
+    private lateinit var callbackManager: CallbackManager
+
+    override fun onStart() {
+        super.onStart()
+        val currentUser = auth.currentUser
+        updateUI(currentUser)
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -33,11 +46,32 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        //both
         auth = FirebaseAuth.getInstance()
+
+       //facebook
+        callbackManager = CallbackManager.Factory.create()
+
+        //google
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.defaul_web_client_id)).build()
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+
+//        // Instantiate a Google sign-in request
+//        val googleIdOption = GetGoogleIdOption.Builder()
+//            // Your server's client ID, not your Android client ID.
+//            .setServerClientId(getString(R.string.default_web_client_id))
+//            // Only show accounts previously used to sign in.
+//            .setFilterByAuthorizedAccounts(true)
+//            .build()
+//
+//        // Create the Credential Manager request
+//        val request = GetCredentialRequest.Builder()
+//            .addCredentialOption(googleIdOption)
+//            .build()
+
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -49,6 +83,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Clicked Button", Toast.LENGTH_SHORT).show()
             val singInIntent = googleSignInClient.signInIntent
             startActivityForResult(singInIntent, tracking_nb_google_sing_up)
+
         }
 
         binding.buttonLogOUt.setOnClickListener {
@@ -66,13 +101,21 @@ class MainActivity : AppCompatActivity() {
 
         }
 
-        binding.buttonSingupFacebook.setOnClickListener {
-            Toast.makeText(this, "Facebook login/singup", Toast.LENGTH_SHORT).show()
-        }
+        binding.buttonSingInFacebook.setPermissions("email", "public_profile")
+        binding.buttonSingInFacebook.registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
+            override fun onSuccess(loginResult: LoginResult) {
+                Log.d(TAG, "facebook:onSuccess:$loginResult")
+                handleFacebookAccessToken(loginResult.accessToken)
+            }
 
-        binding.buttonFaceBookLogout.setOnClickListener {
-            Toast.makeText(this, "Facebook ", Toast.LENGTH_SHORT).show()
-        }
+            override fun onCancel() {
+                Log.d(TAG, "facebook:onCancel")
+            }
+
+            override fun onError(error: FacebookException) {
+                Log.d(TAG, "facebook:onError", error)
+            }
+        })
 
         binding.buttonSingupPasswordBased.setOnClickListener {
             val email=binding.editTextText.text.toString()
@@ -89,7 +132,7 @@ class MainActivity : AppCompatActivity() {
                         Log.w(TAG, "createUserWithEmail:failure", task.exception)
                         Toast.makeText(
                             baseContext,
-                            "Authentication failed.",
+                            "Authentication failed:${task.exception?.message}",
                             Toast.LENGTH_SHORT,
                         ).show()
                         updateUI(null)
@@ -111,17 +154,72 @@ class MainActivity : AppCompatActivity() {
                 }
         }
     }
+//    private fun firebaseAuthWithGoogle(idToken: String) {
+//        val credential = GoogleAuthProvider.getCredential(idToken, null)
+//        auth.signInWithCredential(credential)
+//            .addOnCompleteListener(this) { task ->
+//                if (task.isSuccessful) {
+//                    // Sign in success, update UI with the signed-in user's information
+//                    Log.d(TAG, "signInWithCredential:success")
+//                    val user = auth.currentUser
+//                    updateUI(user)
+//                } else {
+//                    // If sign in fails, display a message to the user
+//                    Log.w(TAG, "signInWithCredential:failure", task.exception)
+//                    updateUI(null)
+//                }
+//            }
+//    }
+//    private fun handleSignInGoogle(credential: Credential) {
+//        // Check if credential is of type Google ID
+//        if (credential is CustomCredential && credential.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+//            // Create Google ID Token
+//            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+//
+//            // Sign in to Firebase with using the token
+//            firebaseAuthWithGoogle(googleIdTokenCredential.idToken)
+//        } else {
+//            Log.w(TAG, "Credential is not of type Google ID!")
+//        }
+//    }
+//
+//    private fun signOutFromGoogle() {
+//        // Firebase sign out
+//        auth.signOut()
+//
+////        // When a user signs out, clear the current user credential state from all credential providers.
+////        lifecycleScope.launch {
+////            try {
+////                val clearRequest = ClearCredentialStateRequest()
+////                credentialManager.clearCredentialState(clearRequest)
+////                updateUI(null)
+////            } catch (e: ClearCredentialException) {
+////                Log.e(TAG, "Couldn't clear user credentials: ${e.localizedMessage}")
+////            }
+////        }
+//    }
+
+    private fun handleFacebookAccessToken(token: AccessToken) {
+        Log.d(TAG, "handleFacebookAccessToken:$token")
+
+        val credential = FacebookAuthProvider.getCredential(token.token)
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    val user = auth.currentUser
+                    updateUI(user)
+                } else {
+                    if (task.exception is FirebaseAuthUserCollisionException) {
+                        Toast.makeText(this, "Account already exists with this email but another provider. Please login using Google or Email/Password.", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this, "Authentication failed: ${task.exception?.localizedMessage}", Toast.LENGTH_SHORT).show()
+                    }
+                    updateUI(null)
+                }
+            }
+    }
     companion object {
         private const val TAG = "EmailPassword"
-    }
-    private fun sendEmailVerification() {
-        // [START send_email_verification]
-        val user = auth.currentUser!!
-        user.sendEmailVerification()
-            .addOnCompleteListener(this) { task ->
-                // Email Verification sent
-            }
-        // [END send_email_verification]
     }
 
     private fun updateUI(user: FirebaseUser?) {
@@ -133,6 +231,7 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        callbackManager.onActivityResult(requestCode, resultCode, data)
         if (requestCode == tracking_nb_google_sing_up) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             if (task.isSuccessful) {

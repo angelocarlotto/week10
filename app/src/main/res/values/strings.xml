@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">week10</string>
     <string name="defaul_web_client_id">75385588683-0ujc1gh854ber8g1ol76a691cp52cbh8.apps.googleusercontent.com</string>
+    <string name="facebook_app_id">738847525220249</string>
+    <string name="facebook_client_token">SEU_CLIENT_TOKEN</string>
+    <string name="fb_login_protocol_scheme">fb738847525220249</string>
 </resources>

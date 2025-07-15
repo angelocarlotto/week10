@@ -53,6 +53,12 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    // Firebase BoM
+    implementation(platform(libs.firebase.bom))
     implementation("com.google.android.gms:play-services-auth:${libs.versions.googlePlayServicesAuth}")
+    // Facebook SDK
+    implementation("com.facebook.android:facebook-login:18.0.3")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
 
 }
