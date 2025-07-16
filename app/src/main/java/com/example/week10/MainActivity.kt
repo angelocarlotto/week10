@@ -213,9 +213,10 @@ class MainActivity : AppCompatActivity() {
             if (task.isSuccessful) {
                 val account = task.result
                 val idToken = account.idToken
-
+                val user = auth.currentUser
+              //  updateUI(user)
                 val credential = GoogleAuthProvider.getCredential(idToken, null)
-                Toast.makeText(this, "Google Sing In Successful ", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Google Sing In Successful :${user?.uid} ", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this, "Google Sing In Failed", Toast.LENGTH_SHORT).show()
             }
