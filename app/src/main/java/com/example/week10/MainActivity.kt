@@ -59,20 +59,6 @@ class MainActivity : AppCompatActivity() {
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
 
-//        // Instantiate a Google sign-in request
-//        val googleIdOption = GetGoogleIdOption.Builder()
-//            // Your server's client ID, not your Android client ID.
-//            .setServerClientId(getString(R.string.default_web_client_id))
-//            // Only show accounts previously used to sign in.
-//            .setFilterByAuthorizedAccounts(true)
-//            .build()
-//
-//        // Create the Credential Manager request
-//        val request = GetCredentialRequest.Builder()
-//            .addCredentialOption(googleIdOption)
-//            .build()
-
-
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -120,84 +106,74 @@ class MainActivity : AppCompatActivity() {
         binding.buttonSingupPasswordBased.setOnClickListener {
             val email=binding.editTextText.text.toString()
             val password=binding.editTextTextPassword.text.toString()
-            auth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this) { task ->
-                    if (task.isSuccessful) {
-                        // Sign in success, update UI with the signed-in user's information
-                        Log.d(TAG, "createUserWithEmail:success")
-                        val user = auth.currentUser
-                        updateUI(user)
-                    } else {
-                        // If sign in fails, display a message to the user.
-                        Log.w(TAG, "createUserWithEmail:failure", task.exception)
-                        Toast.makeText(
-                            baseContext,
-                            "Authentication failed:${task.exception?.message}",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                        updateUI(null)
+            var isValid = true
+
+            if (email.isEmpty()) {
+                binding.editTextText.error = "Login is required"
+                isValid = false
+            }
+
+            if (password.isEmpty()) {
+                binding.editTextTextPassword.error = "Password is required"
+                isValid = false
+            }
+
+            if (isValid) {
+                auth.createUserWithEmailAndPassword(email, password)
+                    .addOnCompleteListener(this) { task ->
+                        if (task.isSuccessful) {
+                            // Sign in success, update UI with the signed-in user's information
+                            Log.d(TAG, "createUserWithEmail:success")
+                            val user = auth.currentUser
+                            updateUI(user)
+                        } else {
+                            // If sign in fails, display a message to the user.
+                            Log.w(TAG, "createUserWithEmail:failure", task.exception)
+                            Toast.makeText(
+                                baseContext,
+                                "Authentication failed:${task.exception?.message}",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                            updateUI(null)
+                        }
                     }
-                }
+            }
         }
 
         binding.buttonPasswordBasedLogin.setOnClickListener {
-            val email=binding.editTextText.text.toString()
-            val password=binding.editTextTextPassword.text.toString()
-            auth.signInWithEmailAndPassword(email,password)
-                .addOnCompleteListener(this) { task ->
-                    if (task.isSuccessful) {
-                        val user = auth.currentUser
-                        updateUI(user)
-                    }else{
-                        updateUI(null)
+            val email=binding.editTextText.text.toString().trim()
+            val password=binding.editTextTextPassword.text.toString().trim()
+
+
+            var isValid = true
+
+            if (email.isEmpty()) {
+                binding.editTextText.error = "Login is required"
+                isValid = false
+            }
+
+            if (password.isEmpty()) {
+                binding.editTextTextPassword.error = "Password is required"
+                isValid = false
+            }
+
+            if (isValid) {
+                // Proceed with authentication logic
+
+
+                auth.signInWithEmailAndPassword(email, password)
+                    .addOnCompleteListener(this) { task ->
+                        if (task.isSuccessful) {
+                            val user = auth.currentUser
+                            updateUI(user)
+                        } else {
+                            updateUI(null, task.exception)
+                        }
                     }
-                }
+            }
         }
     }
-//    private fun firebaseAuthWithGoogle(idToken: String) {
-//        val credential = GoogleAuthProvider.getCredential(idToken, null)
-//        auth.signInWithCredential(credential)
-//            .addOnCompleteListener(this) { task ->
-//                if (task.isSuccessful) {
-//                    // Sign in success, update UI with the signed-in user's information
-//                    Log.d(TAG, "signInWithCredential:success")
-//                    val user = auth.currentUser
-//                    updateUI(user)
-//                } else {
-//                    // If sign in fails, display a message to the user
-//                    Log.w(TAG, "signInWithCredential:failure", task.exception)
-//                    updateUI(null)
-//                }
-//            }
-//    }
-//    private fun handleSignInGoogle(credential: Credential) {
-//        // Check if credential is of type Google ID
-//        if (credential is CustomCredential && credential.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-//            // Create Google ID Token
-//            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-//
-//            // Sign in to Firebase with using the token
-//            firebaseAuthWithGoogle(googleIdTokenCredential.idToken)
-//        } else {
-//            Log.w(TAG, "Credential is not of type Google ID!")
-//        }
-//    }
-//
-//    private fun signOutFromGoogle() {
-//        // Firebase sign out
-//        auth.signOut()
-//
-////        // When a user signs out, clear the current user credential state from all credential providers.
-////        lifecycleScope.launch {
-////            try {
-////                val clearRequest = ClearCredentialStateRequest()
-////                credentialManager.clearCredentialState(clearRequest)
-////                updateUI(null)
-////            } catch (e: ClearCredentialException) {
-////                Log.e(TAG, "Couldn't clear user credentials: ${e.localizedMessage}")
-////            }
-////        }
-//    }
+
 
     private fun handleFacebookAccessToken(token: AccessToken) {
         Log.d(TAG, "handleFacebookAccessToken:$token")
@@ -222,11 +198,11 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "EmailPassword"
     }
 
-    private fun updateUI(user: FirebaseUser?) {
-        if (user==null){
-            Toast.makeText(this, "error on singup ", Toast.LENGTH_SHORT).show()
+    private fun updateUI(user: FirebaseUser?,e:Exception?=null) {
+        if (user==null&&e!=null){
+            Toast.makeText(this, "Singin Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }else{
-            Toast.makeText(this, "Sucess ${user.uid} ", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Sucess ${user?.uid} ", Toast.LENGTH_SHORT).show()
         }
     }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
